@@ -1,0 +1,5 @@
+{
+  "name": "Copy of 智能客户管理系统 (Smart CRM)",
+  "description": "一个基于 React 和 Gemini AI 的现代化客户管理系统，支持增删改查及 AI 辅助生成客户资料。",
+  "requestFramePermissions": []
+}
