@@ -1,0 +1,97 @@
+@page "/"
+@rendermode InteractiveServer
+@inject DashboardService Dashboard
+@inject ProductService Products
+
+<PageTitle>仪表盘</PageTitle>
+
+<h1>仪表盘</h1>
+
+@if (_stats is null)
+{
+    <p class="text-muted mt-3">加载中…</p>
+}
+else
+{
+    <div class="row g-3 mt-1">
+        <div class="col-md-3 col-6">
+            <div class="stat-card">
+                <div class="stat-label"><i class="bi bi-box"></i> 商品种类</div>
+                <div class="stat-value">@_stats.ProductCount</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card">
+                <div class="stat-label"><i class="bi bi-exclamation-triangle text-warning"></i> 库存预警</div>
+                <div class="stat-value text-warning">@_stats.LowStockCount</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card">
+                <div class="stat-label"><i class="bi bi-cash-stack"></i> 库存成本</div>
+                <div class="stat-value">¥@_stats.StockValue.ToString("N2")</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card">
+                <div class="stat-label"><i class="bi bi-graph-up"></i> 今日销售额</div>
+                <div class="stat-value text-success">¥@_stats.SalesTodayAmount.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-md-6">
+            <div class="card-surface">
+                <h5><i class="bi bi-exclamation-triangle text-warning"></i> 库存预警商品</h5>
+                @if (_lowStock.Count == 0)
+                {
+                    <p class="text-muted mb-0">所有商品库存充足 👍</p>
+                }
+                else
+                {
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>编码</th><th>名称</th><th class="text-end">当前</th><th class="text-end">安全库存</th></tr></thead>
+                        <tbody>
+                            @foreach (var p in _lowStock)
+                            {
+                                <tr>
+                                    <td>@p.Code</td>
+                                    <td>@p.Name</td>
+                                    <td class="text-end text-danger fw-bold">@p.StockQuantity</td>
+                                    <td class="text-end">@p.SafetyStock</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card-surface">
+                <h5><i class="bi bi-receipt"></i> 今日单据</h5>
+                <ul class="list-unstyled mb-0">
+                    <li class="d-flex justify-content-between py-2 border-bottom">
+                        <span><i class="bi bi-cart-plus"></i> 采购单</span>
+                        <span class="fw-bold">@_stats.PurchaseTodayCount 张</span>
+                    </li>
+                    <li class="d-flex justify-content-between py-2">
+                        <span><i class="bi bi-cart-check"></i> 销售单</span>
+                        <span class="fw-bold">@_stats.SalesTodayCount 张</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardStats? _stats;
+    private List<Product> _lowStock = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _stats = await Dashboard.GetStatsAsync();
+        _lowStock = await Products.GetLowStockAsync();
+    }
+}

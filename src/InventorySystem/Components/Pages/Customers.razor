@@ -1,0 +1,101 @@
+@page "/customers"
+@rendermode InteractiveServer
+@inject CustomerService Service
+
+<PageTitle>客户</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center">
+    <h1>客户</h1>
+    <button class="btn btn-primary" @onclick="() => Edit(new())"><i class="bi bi-plus-lg"></i> 新增客户</button>
+</div>
+
+<div class="card-surface mt-3">
+    <table class="table table-hover mb-0">
+        <thead><tr><th>名称</th><th>联系人</th><th>电话</th><th>地址</th><th style="width:140px"></th></tr></thead>
+        <tbody>
+            @foreach (var c in _items)
+            {
+                <tr>
+                    <td>@c.Name</td>
+                    <td>@c.Contact</td>
+                    <td>@c.Phone</td>
+                    <td class="text-muted">@c.Address</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => Edit(c)"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => Delete(c)"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            }
+            @if (_items.Count == 0)
+            {
+                <tr><td colspan="5" class="text-center text-muted py-4">暂无数据</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (_editing is not null)
+{
+    <div class="modal-backdrop-custom">
+        <div class="card-surface" style="width:460px">
+            <h5>@(_editing.Id == 0 ? "新增" : "编辑")客户</h5>
+            <EditForm Model="_editing" OnValidSubmit="Save">
+                <DataAnnotationsValidator />
+                <div class="mb-2">
+                    <label class="form-label">名称 *</label>
+                    <InputText class="form-control" @bind-Value="_editing.Name" />
+                    <ValidationMessage For="() => _editing.Name" class="text-danger small" />
+                </div>
+                <div class="row">
+                    <div class="col mb-2">
+                        <label class="form-label">联系人</label>
+                        <InputText class="form-control" @bind-Value="_editing.Contact" />
+                    </div>
+                    <div class="col mb-2">
+                        <label class="form-label">电话</label>
+                        <InputText class="form-control" @bind-Value="_editing.Phone" />
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">地址</label>
+                    <InputText class="form-control" @bind-Value="_editing.Address" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">备注</label>
+                    <InputText class="form-control" @bind-Value="_editing.Remark" />
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light" @onclick="() => _editing = null">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Customer> _items = new();
+    private Customer? _editing;
+
+    protected override async Task OnInitializedAsync() => await Load();
+    private async Task Load() => _items = await Service.GetAllAsync();
+
+    private void Edit(Customer c) => _editing = new Customer
+    {
+        Id = c.Id, Name = c.Name, Contact = c.Contact,
+        Phone = c.Phone, Address = c.Address, Remark = c.Remark
+    };
+
+    private async Task Save()
+    {
+        await Service.SaveAsync(_editing!);
+        _editing = null;
+        await Load();
+    }
+
+    private async Task Delete(Customer c)
+    {
+        await Service.DeleteAsync(c.Id);
+        await Load();
+    }
+}

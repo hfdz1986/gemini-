@@ -1,0 +1,141 @@
+:root {
+    --sidebar-bg: #1f2937;
+    --sidebar-fg: #cbd5e1;
+    --sidebar-active: #3b82f6;
+    --brand: #2563eb;
+}
+
+html, body {
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    background: #f3f4f6;
+    margin: 0;
+}
+
+h1 { font-size: 1.6rem; font-weight: 600; }
+
+.page {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* 侧边栏 */
+.sidebar {
+    width: 230px;
+    flex: 0 0 230px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-fg);
+    display: flex;
+    flex-direction: column;
+}
+
+.navbar-brand-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: 1rem 1.25rem;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #fff;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.navbar-brand-row .bi { color: var(--sidebar-active); }
+
+.nav-scroll { padding: .5rem 0; overflow-y: auto; }
+
+.nav-section {
+    padding: .75rem 1.25rem .25rem;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #6b7280;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .55rem 1.25rem;
+    color: var(--sidebar-fg);
+    text-decoration: none;
+    font-size: .95rem;
+}
+
+.nav-item:hover { background: rgba(255,255,255,.06); color: #fff; }
+
+.nav-item.active {
+    background: rgba(59,130,246,.15);
+    color: #fff;
+    border-left: 3px solid var(--sidebar-active);
+}
+
+/* 主区域 */
+main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+.top-row {
+    height: 52px;
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.content { padding-top: 1.5rem; padding-bottom: 3rem; }
+
+/* 通用卡片 / 统计 */
+.stat-card {
+    background: #fff;
+    border-radius: .6rem;
+    padding: 1.1rem 1.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    height: 100%;
+}
+
+.stat-card .stat-value { font-size: 1.8rem; font-weight: 700; }
+.stat-card .stat-label { color: #6b7280; font-size: .9rem; }
+
+.card-surface {
+    background: #fff;
+    border-radius: .6rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    padding: 1.25rem;
+}
+
+.table > :not(caption) > * > * { vertical-align: middle; }
+
+/* 简易模态框 */
+.modal-backdrop-custom {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    padding: 1rem;
+}
+
+.modal-backdrop-custom .card-surface {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+#blazor-error-ui {
+    background: #fef2f2;
+    color: #991b1b;
+    bottom: 0;
+    display: none;
+    left: 0;
+    padding: .75rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    box-shadow: 0 -1px 2px rgba(0,0,0,.1);
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 1rem;
+    top: .75rem;
+}

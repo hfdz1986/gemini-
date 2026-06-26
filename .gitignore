@@ -20,5 +20,14 @@ dist-ssr
 *.suo
 *.ntvs*
 *.njsproj
-*.sln
 *.sw?
+
+# .NET build artifacts
+[Bb]in/
+[Oo]bj/
+*.user
+
+# SQLite database (生成的本地数据库)
+*.db
+*.db-shm
+*.db-wal

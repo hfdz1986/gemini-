@@ -1,0 +1,81 @@
+@page "/categories"
+@rendermode InteractiveServer
+@inject CategoryService Service
+
+<PageTitle>商品分类</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center">
+    <h1>商品分类</h1>
+    <button class="btn btn-primary" @onclick="() => Edit(new())"><i class="bi bi-plus-lg"></i> 新增分类</button>
+</div>
+
+<div class="card-surface mt-3">
+    <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>名称</th><th>备注</th><th style="width:140px"></th></tr></thead>
+        <tbody>
+            @foreach (var c in _items)
+            {
+                <tr>
+                    <td>@c.Name</td>
+                    <td class="text-muted">@c.Remark</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => Edit(c)"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => Delete(c)"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            }
+            @if (_items.Count == 0)
+            {
+                <tr><td colspan="3" class="text-center text-muted py-4">暂无数据</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (_editing is not null)
+{
+    <div class="modal-backdrop-custom">
+        <div class="card-surface" style="width:420px">
+            <h5>@(_editing.Id == 0 ? "新增" : "编辑")分类</h5>
+            <EditForm Model="_editing" OnValidSubmit="Save">
+                <DataAnnotationsValidator />
+                <div class="mb-3">
+                    <label class="form-label">名称 *</label>
+                    <InputText class="form-control" @bind-Value="_editing.Name" />
+                    <ValidationMessage For="() => _editing.Name" class="text-danger small" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">备注</label>
+                    <InputText class="form-control" @bind-Value="_editing.Remark" />
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light" @onclick="() => _editing = null">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Category> _items = new();
+    private Category? _editing;
+
+    protected override async Task OnInitializedAsync() => await Load();
+    private async Task Load() => _items = await Service.GetAllAsync();
+
+    private void Edit(Category c) => _editing = new Category { Id = c.Id, Name = c.Name, Remark = c.Remark };
+
+    private async Task Save()
+    {
+        await Service.SaveAsync(_editing!);
+        _editing = null;
+        await Load();
+    }
+
+    private async Task Delete(Category c)
+    {
+        await Service.DeleteAsync(c.Id);
+        await Load();
+    }
+}

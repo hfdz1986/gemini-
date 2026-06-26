@@ -1,0 +1,148 @@
+@page "/movements"
+@rendermode InteractiveServer
+@inject InventoryService Inventory
+@inject ProductService Products
+
+<PageTitle>库存流水</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center">
+    <h1>库存流水</h1>
+    <button class="btn btn-outline-primary" @onclick="OpenAdjust"><i class="bi bi-sliders"></i> 库存调整</button>
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger mt-3">@_error</div>
+}
+
+<div class="card-surface mt-3">
+    <div class="mb-3" style="max-width:320px">
+        <label class="form-label">按商品筛选</label>
+        <select class="form-select" @onchange="OnFilterChange">
+            <option value="">全部商品</option>
+            @foreach (var p in _products)
+            {
+                <option value="@p.Id" selected="@(p.Id == _filterProductId)">@p.Code @p.Name</option>
+            }
+        </select>
+    </div>
+
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr><th>时间</th><th>商品</th><th>类型</th><th class="text-end">数量</th><th class="text-end">结存</th><th>来源单据</th><th>备注</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var m in _movements)
+            {
+                <tr>
+                    <td>@m.OccurredAt.ToString("MM-dd HH:mm")</td>
+                    <td>@m.Product?.Code @m.Product?.Name</td>
+                    <td>@TypeBadge(m.Type)</td>
+                    <td class="text-end @(m.Type == MovementType.Out ? "text-danger" : "text-success")">
+                        @(m.Type == MovementType.Out ? "-" : "+")@m.Quantity
+                    </td>
+                    <td class="text-end fw-bold">@m.BalanceAfter</td>
+                    <td>@m.SourceType @m.SourceNo</td>
+                    <td class="text-muted">@m.Remark</td>
+                </tr>
+            }
+            @if (_movements.Count == 0)
+            {
+                <tr><td colspan="7" class="text-center text-muted py-4">暂无流水</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (_adjust is not null)
+{
+    <div class="modal-backdrop-custom">
+        <div class="card-surface" style="width:440px">
+            <h5>库存调整（盘点）</h5>
+            <div class="mb-2">
+                <label class="form-label">商品</label>
+                <select class="form-select" @onchange="OnAdjustProductChange">
+                    <option value="0">请选择…</option>
+                    @foreach (var p in _products)
+                    {
+                        <option value="@p.Id">@p.Code @p.Name（当前@p.StockQuantity）</option>
+                    }
+                </select>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">调整后实际数量</label>
+                <input type="number" min="0" class="form-control" @bind="_adjust.TargetQuantity" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">备注</label>
+                <input class="form-control" @bind="_adjust.Remark" />
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <button class="btn btn-light" @onclick="() => _adjust = null">取消</button>
+                <button class="btn btn-primary" @onclick="SaveAdjust">确定</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<StockMovement> _movements = new();
+    private List<Product> _products = new();
+    private int? _filterProductId;
+    private AdjustModel? _adjust;
+    private string? _error;
+
+    private class AdjustModel
+    {
+        public int ProductId { get; set; }
+        public int TargetQuantity { get; set; }
+        public string? Remark { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _products = await Products.GetActiveAsync();
+        await Load();
+    }
+
+    private async Task Load() => _movements = await Inventory.GetMovementsAsync(_filterProductId);
+
+    private async Task OnFilterChange(ChangeEventArgs e)
+    {
+        _filterProductId = int.TryParse(e.Value?.ToString(), out var id) && id > 0 ? id : null;
+        await Load();
+    }
+
+    private void OpenAdjust()
+    {
+        _error = null;
+        _adjust = new AdjustModel();
+    }
+
+    private void OnAdjustProductChange(ChangeEventArgs e)
+    {
+        _adjust!.ProductId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        _adjust.TargetQuantity = _products.FirstOrDefault(p => p.Id == _adjust.ProductId)?.StockQuantity ?? 0;
+    }
+
+    private async Task SaveAdjust()
+    {
+        _error = null;
+        if (_adjust!.ProductId == 0) { _error = "请选择商品"; return; }
+        try
+        {
+            await Inventory.AdjustAsync(_adjust.ProductId, _adjust.TargetQuantity, _adjust.Remark);
+            _adjust = null;
+            _products = await Products.GetActiveAsync(); // 刷新库存
+            await Load();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private static MarkupString TypeBadge(MovementType t) => new(t switch
+    {
+        MovementType.In => "<span class=\"badge bg-success\">入库</span>",
+        MovementType.Out => "<span class=\"badge bg-danger\">出库</span>",
+        _ => "<span class=\"badge bg-warning text-dark\">盘点</span>"
+    });
+}

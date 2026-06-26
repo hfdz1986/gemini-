@@ -1,0 +1,228 @@
+@page "/sales"
+@rendermode InteractiveServer
+@inject SalesService Service
+@inject CustomerService Customers
+@inject ProductService Products
+
+<PageTitle>销售出货</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center">
+    <h1>销售出货</h1>
+    <button class="btn btn-primary" @onclick="NewOrder"><i class="bi bi-plus-lg"></i> 新建销售单</button>
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger mt-3">@_error</div>
+}
+
+<div class="card-surface mt-3">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr><th>单号</th><th>日期</th><th>客户</th><th class="text-end">金额</th><th>状态</th><th style="width:200px"></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var o in _orders)
+            {
+                <tr>
+                    <td>@o.OrderNo</td>
+                    <td>@o.OrderDate.ToString("yyyy-MM-dd")</td>
+                    <td>@o.Customer?.Name</td>
+                    <td class="text-end">¥@o.TotalAmount.ToString("N2")</td>
+                    <td>@StatusBadge(o.Status)</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => View(o.Id)">明细</button>
+                        @if (o.Status == OrderStatus.Draft)
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="() => Confirm(o.Id)">确认出库</button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => Delete(o.Id)"><i class="bi bi-trash"></i></button>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (_orders.Count == 0)
+            {
+                <tr><td colspan="6" class="text-center text-muted py-4">暂无销售单</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (_creating is not null)
+{
+    <div class="modal-backdrop-custom">
+        <div class="card-surface" style="width:760px">
+            <h5>新建销售单</h5>
+            <EditForm Model="_creating" OnValidSubmit="SaveOrder">
+                <DataAnnotationsValidator />
+                <div class="row">
+                    <div class="col mb-2">
+                        <label class="form-label">客户 *</label>
+                        <InputSelect class="form-select" @bind-Value="_creating.CustomerId">
+                            <option value="0">请选择…</option>
+                            @foreach (var c in _customers)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => _creating.CustomerId" class="text-danger small" />
+                    </div>
+                    <div class="col mb-2">
+                        <label class="form-label">单据日期</label>
+                        <InputDate class="form-control" @bind-Value="_creating.OrderDate" />
+                    </div>
+                </div>
+
+                <label class="form-label mt-2">销售明细</label>
+                <table class="table table-sm align-middle">
+                    <thead><tr><th style="width:40%">商品</th><th>数量</th><th>单价</th><th class="text-end">小计</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var item in _creating.Items)
+                        {
+                            var stock = _products.FirstOrDefault(p => p.Id == item.ProductId)?.StockQuantity;
+                            <tr>
+                                <td>
+                                    <select class="form-select form-select-sm" value="@item.ProductId"
+                                            @onchange="e => OnProductChange(item, e)">
+                                        <option value="0">请选择…</option>
+                                        @foreach (var p in _products)
+                                        {
+                                            <option value="@p.Id">@p.Code @p.Name（库存@p.StockQuantity）</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" min="1" class="form-control form-control-sm"
+                                           value="@item.Quantity" @onchange="e => Recalc(item, qty: e.Value?.ToString())" />
+                                    @if (stock is not null && item.Quantity > stock)
+                                    {
+                                        <span class="text-danger small">库存不足(@stock)</span>
+                                    }
+                                </td>
+                                <td><input type="number" min="0" step="0.01" class="form-control form-control-sm"
+                                           value="@item.UnitPrice" @onchange="e => Recalc(item, price: e.Value?.ToString())" /></td>
+                                <td class="text-end">@item.Amount.ToString("N2")</td>
+                                <td><button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => _creating.Items.Remove(item)"><i class="bi bi-x"></i></button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddItem"><i class="bi bi-plus"></i> 添加一行</button>
+
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span class="fs-5">合计：<b class="text-primary">¥@_creating.Items.Sum(i => i.Amount).ToString("N2")</b></span>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-light" @onclick="() => _creating = null">取消</button>
+                        <button type="submit" class="btn btn-primary">保存为草稿</button>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@if (_viewing is not null)
+{
+    <div class="modal-backdrop-custom">
+        <div class="card-surface" style="width:680px">
+            <div class="d-flex justify-content-between">
+                <h5>销售单 @_viewing.OrderNo</h5>
+                <span>@StatusBadge(_viewing.Status)</span>
+            </div>
+            <p class="text-muted mb-2">客户：@_viewing.Customer?.Name ｜ 日期：@_viewing.OrderDate.ToString("yyyy-MM-dd")</p>
+            <table class="table table-sm">
+                <thead><tr><th>商品</th><th class="text-end">数量</th><th class="text-end">单价</th><th class="text-end">小计</th></tr></thead>
+                <tbody>
+                    @foreach (var i in _viewing.Items)
+                    {
+                        <tr>
+                            <td>@i.Product?.Code @i.Product?.Name</td>
+                            <td class="text-end">@i.Quantity</td>
+                            <td class="text-end">@i.UnitPrice.ToString("N2")</td>
+                            <td class="text-end">@i.Amount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot><tr><td colspan="3" class="text-end fw-bold">合计</td><td class="text-end fw-bold">¥@_viewing.TotalAmount.ToString("N2")</td></tr></tfoot>
+            </table>
+            <div class="text-end"><button class="btn btn-light" @onclick="() => _viewing = null">关闭</button></div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<SalesOrder> _orders = new();
+    private List<Customer> _customers = new();
+    private List<Product> _products = new();
+    private SalesOrder? _creating;
+    private SalesOrder? _viewing;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _customers = await Customers.GetAllAsync();
+        _products = await Products.GetActiveAsync();
+        await Load();
+    }
+
+    private async Task Load() => _orders = await Service.GetAllAsync();
+
+    private void NewOrder()
+    {
+        _error = null;
+        _creating = new SalesOrder { OrderDate = DateTime.Today };
+        AddItem();
+    }
+
+    private void AddItem() => _creating!.Items.Add(new SalesOrderItem());
+
+    private void OnProductChange(SalesOrderItem item, ChangeEventArgs e)
+    {
+        item.ProductId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        var product = _products.FirstOrDefault(p => p.Id == item.ProductId);
+        if (product is not null && item.UnitPrice == 0)
+            item.UnitPrice = product.SalePrice; // 默认带出参考售价
+    }
+
+    private void Recalc(SalesOrderItem item, string? qty = null, string? price = null)
+    {
+        if (qty is not null && int.TryParse(qty, out var q)) item.Quantity = q;
+        if (price is not null && decimal.TryParse(price, out var p)) item.UnitPrice = p;
+    }
+
+    private async Task SaveOrder()
+    {
+        _error = null;
+        _creating!.Items = _creating.Items.Where(i => i.ProductId > 0 && i.Quantity > 0).ToList();
+        if (_creating.Items.Count == 0) { _error = "请至少添加一条有效明细"; return; }
+        try
+        {
+            await Service.CreateAsync(_creating);
+            _creating = null;
+            await Load();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task Confirm(int id)
+    {
+        _error = null;
+        try { await Service.ConfirmAsync(id); await Load(); }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task Delete(int id)
+    {
+        try { await Service.DeleteDraftAsync(id); await Load(); }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task View(int id) => _viewing = await Service.GetByIdAsync(id);
+
+    private static MarkupString StatusBadge(OrderStatus s) => new(s switch
+    {
+        OrderStatus.Draft => "<span class=\"badge bg-secondary\">草稿</span>",
+        OrderStatus.Confirmed => "<span class=\"badge bg-success\">已确认</span>",
+        _ => "<span class=\"badge bg-danger\">已取消</span>"
+    });
+}

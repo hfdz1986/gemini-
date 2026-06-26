@@ -1,0 +1,24 @@
+@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>出错了</PageTitle>
+
+<div class="p-4">
+    <h1 class="text-danger">发生错误</h1>
+    <p>处理您的请求时发生了未预期的错误。</p>
+
+    @if (ShowRequestId)
+    {
+        <p><strong>请求 ID：</strong> <code>@RequestId</code></p>
+    }
+</div>
+
+@code {
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}
